@@ -2,6 +2,7 @@ import nodeMailer from "nodemailer";
 
 export const sendMail = async ({email, subject, message}) => {
   try {
+    console.log(email, subject, message)
     const transporter = nodeMailer.createTransport({
       host: process.env.SMTP_HOST,
       service: process.env.SMTP_SERVICE,
@@ -22,6 +23,7 @@ export const sendMail = async ({email, subject, message}) => {
     await transporter.sendMail(option);
     console.log('mail sent successfullyy....')
   } catch (error) {
+    console.log(error)
    return "something went wrong";
   }
 };

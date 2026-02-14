@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
-import { Attendance } from "../models/attendance.models.js";
-import { OtpVerification } from "../models/otp_verification.models.js";
+// import { Attendance } from "../models/attendance.models.js";
+// import { OtpVerification } from "../models/otp_verification.models.js";
 import AppError from "../utils/appError.js";
 import asyncErrorHandler from "../utils/asyncErrorHandler.js";
-import sendToken from "../utils/sendToken.js";
-import crypto from "crypto";
-import { User } from "../models/users.models.js";
+// import sendToken from "../utils/sendToken.js";
+// import crypto from "crypto";
+import { User } from "../models/user.model.js";
 import { sendMail } from "../utils/sendMail.js";
-import { AssignmentSubmission } from "../models/assignments.submission.models.js";
-import { Assignments } from "../models/assignments.models.js";
-import { uploadToCloudinary } from "../utils/uploadonCloudinary.js";
+// import { AssignmentSubmission } from "../models/assignments.submission.models.js";
+// import { Assignments } from "../models/assignments.models.js";
+// import { uploadToCloudinary } from "../utils/uploadonCloudinary.js";
 
 const userRegister = asyncErrorHandler(async (req, res, next) => {
   try {
@@ -29,6 +29,7 @@ const userRegister = asyncErrorHandler(async (req, res, next) => {
     if (!existUser) {
       return next(new AppError("User not found", 404));
     }
+    return next(new AppError("OTP already sent to your email, please check your inbox", 400));
     if (existUser.isVerified) {
       return next(new AppError("User already verified, please login", 400));
     }
@@ -62,7 +63,7 @@ const userRegister = asyncErrorHandler(async (req, res, next) => {
       .status(200)
       .json({ success: true, message: "OTP sent successfully", user: user });
   } catch (error) {
-    console.log(error)
+    console.log('user register error',error)
     return next(new AppError("Error sending OTP", 500));
   }
 });
