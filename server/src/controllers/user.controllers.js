@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
-// import { Attendance } from "../models/attendance.models.js";
-// import { OtpVerification } from "../models/otp_verification.models.js";
+import { OtpVerification } from "../models/otp-verification.model.js";
 import AppError from "../utils/appError.js";
 import asyncErrorHandler from "../utils/asyncErrorHandler.js";
-// import sendToken from "../utils/sendToken.js";
-// import crypto from "crypto";
+import crypto from "crypto";
 import { User } from "../models/user.model.js";
 import { sendMail } from "../utils/sendMail.js";
+import sendToken from "../utils/sendToken.js";
+import { Attendance } from "../models/attendance.model.js";
 // import { AssignmentSubmission } from "../models/assignments.submission.models.js";
 // import { Assignments } from "../models/assignments.models.js";
 // import { uploadToCloudinary } from "../utils/uploadonCloudinary.js";
@@ -20,7 +20,7 @@ const userRegister = asyncErrorHandler(async (req, res, next) => {
     let existUser = await User.findOne({
       enrollmentNumber: identifier,
     });
-  
+
     if (!existUser) {
       existUser = await User.findOne({
         teacherId: identifier,
@@ -29,24 +29,27 @@ const userRegister = asyncErrorHandler(async (req, res, next) => {
     if (!existUser) {
       return next(new AppError("User not found", 404));
     }
-    return next(new AppError("OTP already sent to your email, please check your inbox", 400));
+    // return next(new AppError("OTP already sent to your email, please check your inbox", 400));
     if (existUser.isVerified) {
       return next(new AppError("User already verified, please login", 400));
     }
     const otp = existUser.generateOTP();
-  
+
     await existUser.save({ validateBeforeSave: false });
-  
+
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-  
+
     await OtpVerification.create({
       userId: new mongoose.Types.ObjectId(existUser._id),
       otp,
       expiresAt,
     });
-  
-    const message = generateOtpEmail(otp, process.env.APP_NAME || "College ERP");
-  
+
+    const message = generateOtpEmail(
+      otp,
+      process.env.APP_NAME || "College ERP",
+    );
+
     await sendMail({
       email: existUser.email,
       subject: "Your OTP Code",
@@ -63,7 +66,7 @@ const userRegister = asyncErrorHandler(async (req, res, next) => {
       .status(200)
       .json({ success: true, message: "OTP sent successfully", user: user });
   } catch (error) {
-    console.log('user register error',error)
+    console.log("user register error", error);
     return next(new AppError("Error sending OTP", 500));
   }
 });
@@ -163,8 +166,8 @@ const verifyOTP = asyncErrorHandler(async (req, res, next) => {
     await otpRecord.deleteOne();
     return next(new AppError("OTP expired", 400));
   }
-
-  if (otpRecord.otp !== otp) {
+  console.log(otpRecord.otp, otp);
+  if (otpRecord.otp !== String(otp)) {
     return next(new AppError("Invalid OTP", 400));
   }
 
@@ -219,10 +222,12 @@ const login = asyncErrorHandler(async (req, res, next) => {
       return next(new AppError("All fields are required", 400));
     }
 
-    let user = await User.findOne({ enrollmentNumber:identifier }).select("+password");
+    let user = await User.findOne({ enrollmentNumber: identifier }).select(
+      "+password",
+    );
 
     if (!user) {
-      user = await User.findOne({ teacherId:identifier }).select("+password");
+      user = await User.findOne({ teacherId: identifier }).select("+password");
     }
     if (!user) {
       return next(new AppError("User not found", 404));
@@ -244,59 +249,58 @@ const login = asyncErrorHandler(async (req, res, next) => {
   }
 });
 
-const getAttendance = asyncErrorHandler(async (req, res, next) => {
-  const loggedInUserId = req.user.id;
-  const loggedInUserRole = req.user.role;
+// const getAttendance = asyncErrorHandler(async (req, res, next) => {
+//   const loggedInUserId = req.user.id;
+//   const loggedInUserRole = req.user.role;
 
-  let targetUserId;
+//   let targetUserId;
 
-  // 🧑‍🎓 Student → can see only own attendance
-  if (loggedInUserRole === "student") {
-    targetUserId = loggedInUserId;
-  }
+//   // 🧑‍🎓 Student → can see only own attendance
+//   if (loggedInUserRole === "student") {
+//     targetUserId = loggedInUserId;
+//   }
 
-  // 🧑‍🏫 Teacher / HOD → can see any student's attendance
-  if (loggedInUserRole === "teacher" || loggedInUserRole === "hod") {
-    targetUserId = req.body.studentId;
+//   // 🧑‍🏫 Teacher / HOD → can see any student's attendance
+//   if (loggedInUserRole === "teacher" || loggedInUserRole === "hod") {
+//     targetUserId = req.body.studentId;
 
-    if (!targetUserId) {
-      return next(
-        new AppError("studentId is required to view attendance", 400)
-      );
-    }
-  }
+//     if (!targetUserId) {
+//       return next(
+//         new AppError("studentId is required to view attendance", 400),
+//       );
+//     }
+//   }
 
-  // 🚫 Unauthorized role
-  if (!targetUserId) {
-    return next(new AppError("Not authorized", 403));
-  }
+//   // 🚫 Unauthorized role
+//   if (!targetUserId) {
+//     return next(new AppError("Not authorized", 403));
+//   }
 
-  // 🔍 Fetch student (ensure target is student)
-  const student = await User.findOne({
-    _id: targetUserId,
-    role: "student",
-  });
+//   // 🔍 Fetch student (ensure target is student)
+//   const student = await User.findOne({
+//     _id: targetUserId,
+//     role: "student",
+//   });
 
-  if (!student) {
-    return next(new AppError("Student not found", 404));
-  }
+//   if (!student) {
+//     return next(new AppError("Student not found", 404));
+//   }
 
-  // 📊 Fetch attendance
-  const attendance = await Attendance.find({
-    student: student._id,
-  });
+//   // 📊 Fetch attendance
+//   const attendance = await Attendance.find({
+//     student: student._id,
+//   });
 
-  return res.status(200).json({
-    success: true,
-    student: {
-      id: student._id,
-      name: student.name,
-      enrollmentNumber: student.enrollmentNumber,
-    },
-    attendance,
-  });
-});
-
+//   return res.status(200).json({
+//     success: true,
+//     student: {
+//       id: student._id,
+//       name: student.name,
+//       enrollmentNumber: student.enrollmentNumber,
+//     },
+//     attendance,
+//   });
+// });
 
 const forgetPassword = asyncErrorHandler(async (req, res, next) => {
   try {
@@ -308,7 +312,7 @@ const forgetPassword = asyncErrorHandler(async (req, res, next) => {
 
     let user = await User.findOne({ enrollmentNumber: identifier });
     if (!user) {
-     user = await User.findOne({ teacherId: identifier });
+      user = await User.findOne({ teacherId: identifier });
     }
     if (!user) {
       return next(new AppError("User not found", 404));
@@ -377,7 +381,7 @@ const resetPassword = asyncErrorHandler(async (req, res, next) => {
   try {
     const { newPassword } = req.body;
     const { token } = req.params;
-
+    console.log(newPassword, token);
     if (!token) {
       return next(new AppError("Token is required", 400));
     }
@@ -411,104 +415,100 @@ const resetPassword = asyncErrorHandler(async (req, res, next) => {
   }
 });
 
-//! user assignment submission using cloudinary..........
+// //! user assignment submission using cloudinary..........
 
-const assignments = asyncErrorHandler(async (req, res, next) => {
-  const assignmentId = req.params.assignmentId;
-  const assignment = await Assignments.findById(assignmentId);
-  if (!assignment) {
-    return next(new AppError("Assignment not found", 404));
-  }
-  return res.status(200).json({
-    success: true,
-    assignment,
-  });
-});
+// const assignments = asyncErrorHandler(async (req, res, next) => {
+//   const assignmentId = req.params.assignmentId;
+//   const assignment = await Assignments.findById(assignmentId);
+//   if (!assignment) {
+//     return next(new AppError("Assignment not found", 404));
+//   }
+//   return res.status(200).json({
+//     success: true,
+//     assignment,
+//   });
+// });
 
-const submitAssignments = asyncErrorHandler(async (req, res, next) => {
-  try {
-    const {assignmentId} = req.body;
-    const studentId = req.user.id;
-    // take the file using multer..
-    const assignmentFile = req.file;
-    if (!req.file) {
-      return next(new AppError("No file uploaded", 400));
-    }
+// const submitAssignments = asyncErrorHandler(async (req, res, next) => {
+//   try {
+//     const { assignmentId } = req.body;
+//     const studentId = req.user.id;
+//     // take the file using multer..
+//     const assignmentFile = req.file;
+//     if (!req.file) {
+//       return next(new AppError("No file uploaded", 400));
+//     }
 
-    //* check file extension
-    const allowedExtensions = [
-      ".pdf",
-      ".doc",
-      ".docx",
-      ".jpg",
-      ".jpeg",
-      ".png",
-    ];
-    const fileExt = path.extname(assignmentFile.path).toLowerCase();
-    if (!allowedExtensions.includes(fileExt)) {
-      console.warn(`File type ${fileExt} is not allowed.`);
-      fs.unlink(assignmentFile.path); // Delete invalid file
-      return next(
-        new AppError(
-          `File type ${fileExt} is not allowed. Only PDF and JPG/JPEG are accepted.`,
-          403,
-        ),
-      );
-    }
-    // check if assignment exists
-    const existingAssignment = await AssignmentSubmission.findOne({
-      studentId,
-      assignmentId
-    });
-    if (existingAssignment) {
-      return next(
-        new AppError(
-          "Assignment already submitted by you",
-          400,
-        ),
-      );
-    }
+//     //* check file extension
+//     const allowedExtensions = [
+//       ".pdf",
+//       ".doc",
+//       ".docx",
+//       ".jpg",
+//       ".jpeg",
+//       ".png",
+//     ];
+//     const fileExt = path.extname(assignmentFile.path).toLowerCase();
+//     if (!allowedExtensions.includes(fileExt)) {
+//       console.warn(`File type ${fileExt} is not allowed.`);
+//       fs.unlink(assignmentFile.path); // Delete invalid file
+//       return next(
+//         new AppError(
+//           `File type ${fileExt} is not allowed. Only PDF and JPG/JPEG are accepted.`,
+//           403,
+//         ),
+//       );
+//     }
+//     // check if assignment exists
+//     const existingAssignment = await AssignmentSubmission.findOne({
+//       studentId,
+//       assignmentId,
+//     });
+//     if (existingAssignment) {
+//       return next(new AppError("Assignment already submitted by you", 400));
+//     }
 
-    // upload file to cloudinary and get the file path
-    const cloudinaryResult = await uploadToCloudinary(assignmentFile.path);
+//     // upload file to cloudinary and get the file path
+//     const cloudinaryResult = await uploadToCloudinary(assignmentFile.path);
 
-    if (!cloudinaryResult || !cloudinaryResult.secure_url) {
-      return next(new AppError("Failed to upload notes to cloud storage", 500));
-    }
-    let assignmentStatus = "Submitted";
-    const submissionDeadLine = await Assignments.findById(assignmentId).select("deadline");
-    if(!submissionDeadLine){
-      return next(new AppError("Assignment not found", 404));
-    }
-    if (new Date() > submissionDeadLine.deadline){
-     assignmentStatus = "Late"
-    }
+//     if (!cloudinaryResult || !cloudinaryResult.secure_url) {
+//       return next(new AppError("Failed to upload notes to cloud storage", 500));
+//     }
+//     let assignmentStatus = "Submitted";
+//     const submissionDeadLine =
+//       await Assignments.findById(assignmentId).select("deadline");
+//     if (!submissionDeadLine) {
+//       return next(new AppError("Assignment not found", 404));
+//     }
+//     if (new Date() > submissionDeadLine.deadline) {
+//       assignmentStatus = "Late";
+//     }
 
-    const newAssignmentSubmission = new AssignmentSubmission({
-      assignmentId,
-      studentId,
-      fileUrl: cloudinaryResult.secure_url,
-      publicId: cloudinaryResult.public_id,
-      status: assignmentStatus,
-    });
-    await newAssignmentSubmission.save();
+//     const newAssignmentSubmission = new AssignmentSubmission({
+//       assignmentId,
+//       studentId,
+//       fileUrl: cloudinaryResult.secure_url,
+//       publicId: cloudinaryResult.public_id,
+//       status: assignmentStatus,
+//     });
+//     await newAssignmentSubmission.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Assignment uploaded successfully"
-    });
-  } catch (error) {
-    console.log(error);
-    return next(error);
-  }
-});
+//     return res.status(200).json({
+//       success: true,
+//       message: "Assignment uploaded successfully",
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     return next(error);
+//   }
+// });
 export {
   userRegister,
   verifyOTP,
   setPassword,
   login,
-  getAttendance,
+  // getAttendance,
   forgetPassword,
   resetPassword,
-  submitAssignments,
+  // submitAssignments,
 };

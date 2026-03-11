@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import userRouter from './src/routes/user.route.js';
 import globalErrorHandler from './src/utils/globalError.js';
+import { studentRouter } from './src/routes/student.route.js';
 dotenv.config();
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(cookieParser());
 
 //* All Routes user teacher and admin
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/students', studentRouter);
 app.get('/', async (req, res) => {
   res.send('Welcome to the College ERP System');
 });

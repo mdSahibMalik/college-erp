@@ -95,11 +95,11 @@ const userSchema = new mongoose.Schema(
 );
 
 //! Pre-validation hook to enforce role-based field requirements
-userSchema.pre("validate", function (next) {
+userSchema.pre("validate", function () {
   // STUDENT VALIDATION
   if (this.role === "student") {
     if (!this.enrollmentNumber) {
-      return next(new Error("Enrollment number is required for students"));
+      throw new Error("Enrollment number is required for students");
     }
 
     // clean teacher fields
@@ -109,9 +109,9 @@ userSchema.pre("validate", function (next) {
   }
 
   // TEACHER / HOD / ADMIN VALIDATION
-  if (this.role === "teacher" || this.role === "hod" || this.role === "admin") {
+  if (['teacher', 'admin', 'hod'].includes(this.role)) {
     if (!this.teacherId) {
-      return next(new Error("Teacher ID is required for staff"));
+      throw new Error("Teacher ID is required for staff");
     }
 
     // clean student fields
@@ -124,24 +124,30 @@ userSchema.pre("validate", function (next) {
       this.isHod = true;
     }
   }
-
-  next();
 });
 
 //! hashed password before save
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password") || !this.password) {
-    return next();
-  }
+// userSchema.pre("save", async function (next) {
+//   if (!this.isModified("password") || !this.password) {
+//     return next();
+//   }
 
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
-});
+//   this.password = await bcrypt.hash(this.password, 10);
+//   next();
+// });
 
 //! compare password before login
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
+
+userSchema.pre("save", async function () {
+  if (!this.isModified("password") || !this.password) {
+    return;
+  }
+
+  this.password = await bcrypt.hash(this.password, 10);
+});
 
 //! generate OTP
 userSchema.methods.generateOTP = function () {
@@ -158,7 +164,7 @@ userSchema.methods.jwtGenerateToken = function () {
   return jwt.sign(
     {
       id: this._id.toString(),
-      role: this.role
+      role: this.role,
     },
     process.env.JWT_SECRET,
     {
