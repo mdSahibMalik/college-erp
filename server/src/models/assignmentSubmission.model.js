@@ -49,7 +49,7 @@ const assignmentSubmissionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["submitted", "checked"],
+      enum: ["submitted","Late", "checked"],
       default: "submitted",
     },
   },

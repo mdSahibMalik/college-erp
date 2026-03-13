@@ -1,4 +1,5 @@
 import multer from "multer";
+import path from "path";
 
 // Multer configuration
 const storage = multer.diskStorage({
@@ -14,7 +15,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ["application/pdf"];
+  const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/jpeg", "image/png"];
 
   if (allowed.includes(file.mimetype)) {
     cb(null, true);

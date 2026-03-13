@@ -1,6 +1,5 @@
-import {v2 as cloudinary} from 'cloudinary';
-import asyncErrorHandler from "./asyncErrorHandler.js";
-import AppError from "./appError.js";
+import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -8,21 +7,24 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const uploadToCloudinary = asyncErrorHandler(async (localFilePath) => {
+export const uploadToCloudinary = async (localFilePath) => {
   try {
-    const result = await cloudinary.uploader.upload(localFilePath,{
-      resource_type: "auto", // supports PDF, DOCX, image, video, everything
+    const result = await cloudinary.uploader.upload(localFilePath, {
+      resource_type: "auto",
     });
-  
-   // delete file only if exists
-    if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
+
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
 
     return result;
   } catch (error) {
     console.error("Cloudinary Upload Error:", error);
 
-    if (fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
 
     return null;
   }
-});
+};
